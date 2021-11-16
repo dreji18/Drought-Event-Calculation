@@ -12,45 +12,46 @@ import base64
 from io import BytesIO
 
 
-def drought_events(df, col):
+def drought_events(df, col, option):
     data = df[col].to_frame()
 
     data.loc[data[col] < 0,'event'] = 1
     data.loc[data[col] > 0,'event'] = 0
     
-    # 0 condition
-    for id in range(0, len(data)):
-        try:
-            if data['event'][id] == 0:
-                if data['event'][id+1] ==1 and data['event'][id-1] == 1:
-                    data['event'][id] =1
-        except:
-            continue
+    if option == "3-Month":
+        # 0 condition
+        for id in range(0, len(data)):
+            try:
+                if data['event'][id] == 0:
+                    if data['event'][id+1] ==1 and data['event'][id-1] == 1:
+                        data['event'][id] =1
+            except:
+                continue
+            
+            try:
+                if data['event'][id] == 0 and data['event'][id+1] == 0:
+                    if data['event'][id-1] == 1 and data['event'][id+2] == 1:
+                        data['event'][id] =1
+                        data['event'][id+1] = 1
+            except:
+                continue
         
-        try:
-            if data['event'][id] == 0 and data['event'][id+1] == 0:
-                if data['event'][id-1] == 1 and data['event'][id+2] == 1:
-                    data['event'][id] =1
-                    data['event'][id+1] = 1
-        except:
-            continue
-    
-    # 1 condition
-    for id in range(0, len(data)):
-        try:
-            if data['event'][id] == 1:
-                if data['event'][id+1] ==0 and data['event'][id-1] == 0:
-                    data['event'][id] =0
-        except:
-            continue
-        
-        try:
-            if data['event'][id] == 1 and data['event'][id+1] == 1:
-                if data['event'][id-1] == 0 and data['event'][id+2] == 0:
-                    data['event'][id] =0
-                    data['event'][id+1] = 0
-        except:
-            continue
+        # 1 condition
+        for id in range(0, len(data)):
+            try:
+                if data['event'][id] == 1:
+                    if data['event'][id+1] ==0 and data['event'][id-1] == 0:
+                        data['event'][id] =0
+            except:
+                continue
+            
+            try:
+                if data['event'][id] == 1 and data['event'][id+1] == 1:
+                    if data['event'][id-1] == 0 and data['event'][id+2] == 0:
+                        data['event'][id] =0
+                        data['event'][id+1] = 0
+            except:
+                continue
     
     data = data.dropna()
     data = data.reset_index(drop=True)
@@ -124,17 +125,28 @@ def main():
     
     if uploaded_file:    
         df = pd.read_excel(uploaded_file)
-        st.warning(list(df.columns))
+        st.warning("Columns: " + ', '.join(list(df.columns)))
+    
+    option = st.sidebar.selectbox(
+        'Select the span',
+        ('1-Month', '3-Month'))
+    
     
     search_string = st.sidebar.text_input("Enter the column name and press enter", "")
     
     if search_string!= "":
         if search_string in list(df.columns):
             col = search_string
-            event_df = drought_events(df, col)
+            event_df = drought_events(df, col, option)
+            st.write("\n")
+            if option == "3-Month":
+                st.subheader("3-Month period drought events")
+            else:
+                st.subheader("1-Month period drought events")
+            
             st.dataframe(event_df)
             
-            btn_download = st.button("Click to Download the SpreedSheet")
+            btn_download = st.button("Click to Download the Spreadsheet")
             filename = col +'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
 
             if btn_download:
