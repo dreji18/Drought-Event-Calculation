@@ -147,9 +147,15 @@ def main():
     st.info("Extracton of Drought Events and its parameters")
     uploaded_file = st.sidebar.file_uploader("Choose the raw data file", type="xlsx")
     
+    col_names = ""
+    df = pd.DataFrame()
     if uploaded_file:    
         df = pd.read_excel(uploaded_file)
         st.warning("Columns: " + ', '.join(list(df.columns)))
+        
+        col_names = df.columns
+        remove_words = ["Year", "year", "date", "Date", "month", "Month"]
+        col_names = [word for word in col_names if word not in remove_words]
     
     option = st.sidebar.selectbox(
         'Select the span',
@@ -157,10 +163,6 @@ def main():
     
     
     #search_string = st.sidebar.text_input("Enter the column name and press enter", "")
-    col_names = df.columns
-    remove_words = ["Year", "year", "date", "Date", "month", "Month"]
-    col_names = [word for word in col_names if word not in remove_words]
-    
     
     search_string = st.sidebar.selectbox(
         'Select the column',
