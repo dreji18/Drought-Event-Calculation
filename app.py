@@ -156,7 +156,15 @@ def main():
         ('1-Month', '3-Month'))
     
     
-    search_string = st.sidebar.text_input("Enter the column name and press enter", "")
+    #search_string = st.sidebar.text_input("Enter the column name and press enter", "")
+    col_names = df.columns
+    remove_words = ["Year", "year", "date", "Date", "month", "Month"]
+    col_names = [word for word in col_names if word not in remove_words]
+    
+    
+    search_string = st.sidebar.selectbox(
+        'Select the column',
+        (col_names))
     
     if search_string!= "":
         if search_string in list(df.columns):
@@ -184,7 +192,7 @@ def main():
             if tickbox:
                 option1 = st.sidebar.selectbox(
                     'Select the drought parameter',
-                    (event_df.columns))
+                    ([word for word in event_df.columns if word not in ['event no.']]))
                 
                 st.subheader("Normal Distribution")
                 col1, col2 = st.columns([8,4])
