@@ -64,7 +64,10 @@ def drought_events(df, col, option):
         if data['event'][id] == 0:
             event_count.append(np.nan)
         elif data['event'][id] == 1:
-            if data['event'][id-1] == 0:
+            if id == 0:
+                counter+=1
+                event_count.append(counter)
+            elif data['event'][id-1] == 0:
                 counter+=1
                 event_count.append(counter)
             else:
