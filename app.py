@@ -10,8 +10,13 @@ import pandas as pd
 import numpy as np
 import base64
 from io import BytesIO
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import norm
 
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
+#%%
 def drought_events(df, col, option):
     data = df[col].to_frame()
 
@@ -120,6 +125,22 @@ def download_link(object_to_download, download_filename, download_link_text):
 
     return f'<a href="data:file/txt;base64,{b64}" download="{download_filename}">{download_link_text}</a>'
 
+def normal_distribution(x):
+    #Creating a Function.
+    def normal_dist(x , mean , sd):
+        prob_density = (np.pi*sd) * np.exp(-0.5*((x-mean)/sd)**2)
+        return prob_density
+     
+    #Calculate mean and Standard deviation.
+    mean = np.mean(x)
+    sd = np.std(x)
+     
+    #Apply function to the data.
+    pdf = normal_dist(x,mean,sd)
+    
+    return pdf
+
+
 def main():
     """App with Streamlit"""
     
@@ -155,6 +176,35 @@ def main():
             if btn_download:
                 tmp_download_link = download_link(event_df, filename, 'Click here to download your data!')
                 st.markdown(tmp_download_link, unsafe_allow_html=True)
+            
+            st.write("\n")
+            
+            tickbox = st.sidebar.checkbox("Show Distributions")
+                       
+            if tickbox:
+                option1 = st.sidebar.selectbox(
+                    'Select the drought parameter',
+                    (event_df.columns))
+                
+                st.subheader("Normal Distribution")
+                col1, col2 = st.columns([8,4])
+                
+                with col1:
+                    sns.distplot(np.array(event_df[option1]))
+                    plt.show()
+                    st.pyplot()
+                
+                with col2:
+                    pdf = normal_distribution(event_df[option1])
+                    normal_df = pd.DataFrame(event_df[option1])
+                    normal_df['normal'] = pdf
+                    st.dataframe(normal_df)
+                    
+                
+                
+                            
+
+            
     
 if __name__ == "__main__":
     main()    
