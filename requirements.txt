@@ -5,3 +5,4 @@ openpyxl
 matplotlib
 seaborn
 scipy
+fitter
