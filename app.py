@@ -176,14 +176,16 @@ def main():
             event_df = drought_events(df, col, option)
             st.write("\n")
             if option == "3-Month":
+                num = 3
                 st.subheader("3-Month period drought events")
             else:
+                num = 1
                 st.subheader("1-Month period drought events")
             
             st.dataframe(event_df)
             
             btn_download = st.button("Click to Download the Spreadsheet")
-            filename = col +'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+            filename = col + "_"+str(num)+ "_month"+'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
 
             if btn_download:
                 tmp_download_link = download_link(event_df, filename, 'Click here to download your data!')
@@ -211,13 +213,16 @@ def main():
                 #     normal_df = pd.DataFrame(event_df[option1])
                 #     normal_df['normal'] = pdf
                 #     st.dataframe(normal_df)
-                    
+                
+                filename1 = col + "_"+str(num)+ "_month"+ '_summary'+'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
                 f = Fitter(event_df[option1].values,
                            distributions=['norm', 'genextreme', 'expon', 'weibull_max', 'weibull_min', 'gamma', 'lognorm', 'logistic'])
                 f.fit()
                 st.write("\n")
                 st.subheader("Summary")
                 st.write(f.summary(Nbest=8))
+                download_link1 = download_link(f.summary(Nbest=8), filename1,'download your summary!')
+                st.markdown(download_link1, unsafe_allow_html=True)
                 plt.show()
                 st.write("\n")
                 st.subheader("Combined Distribution Plot")
