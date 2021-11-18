@@ -13,6 +13,8 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import norm
+from fitter import Fitter, get_common_distributions, get_distributions
+
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
@@ -196,25 +198,37 @@ def main():
                     'Select the drought parameter',
                     ([word for word in event_df.columns if word not in ['event no.']]))
                 
-                st.subheader("Normal Distribution")
-                col1, col2 = st.columns([8,4])
+                # st.subheader("Normal Distribution")
+                # col1, col2 = st.columns([8,4])
                 
-                with col1:
-                    sns.distplot(np.array(event_df[option1]))
-                    plt.show()
-                    st.pyplot()
+                # with col1:
+                #     sns.distplot(np.array(event_df[option1]))
+                #     plt.show()
+                #     st.pyplot()
                 
-                with col2:
-                    pdf = normal_distribution(event_df[option1])
-                    normal_df = pd.DataFrame(event_df[option1])
-                    normal_df['normal'] = pdf
-                    st.dataframe(normal_df)
+                # with col2:
+                #     pdf = normal_distribution(event_df[option1])
+                #     normal_df = pd.DataFrame(event_df[option1])
+                #     normal_df['normal'] = pdf
+                #     st.dataframe(normal_df)
                     
+                f = Fitter(event_df[option1].values,
+                           distributions=['norm', 'genextreme', 'expon', 'weibull_max', 'weibull_min', 'gamma', 'lognorm', 'logistic'])
+                f.fit()
+                st.write("\n")
+                st.subheader("Summary")
+                st.write(f.summary(Nbest=8))
+                plt.show()
+                st.write("\n")
+                st.subheader("Combined Distribution Plot")
+                st.pyplot()
                 
+                option2 = st.selectbox(
+                    'Selection Criteria',
+                    ('aic', 'bic', 'sumsquare_error'))
                 
+                st.success("Best Fitted Distribution Parameters")
+                st.write(f.get_best(method = option2))
                             
-
-            
-    
 if __name__ == "__main__":
     main()    
