@@ -127,113 +127,96 @@ def download_link(object_to_download, download_filename, download_link_text):
 
     return f'<a href="data:file/txt;base64,{b64}" download="{download_filename}">{download_link_text}</a>'
 
-def normal_distribution(x):
-    #Creating a Function.
-    def normal_dist(x , mean , sd):
-        prob_density = (np.pi*sd) * np.exp(-0.5*((x-mean)/sd)**2)
-        return prob_density
-     
-    #Calculate mean and Standard deviation.
-    mean = np.mean(x)
-    sd = np.std(x)
-     
-    #Apply function to the data.
-    pdf = normal_dist(x,mean,sd)
-    
-    return pdf
-
-
 def main():
-    """App with Streamlit"""
+    """Drought events and parameters"""
     
     st.info("Extracton of Drought Events and its parameters")
-    uploaded_file = st.sidebar.file_uploader("Choose the raw data file", type="xlsx")
     
-    col_names = ""
-    df = pd.DataFrame()
-    if uploaded_file:    
-        df = pd.read_excel(uploaded_file)
-        st.warning("Columns: " + ', '.join(list(df.columns)))
+    select_options = ("Drought Parameters & Distributions", "Copula")
+    select_value = st.sidebar.radio("Select the Desired Option", select_options,0)
+    
+    if select_value == "Drought Parameters & Distributions":
+    
+        st.header("🎲 Drought Parameters & Distributions") 
+        uploaded_file = st.sidebar.file_uploader("Choose the raw data file", type="xlsx")
         
-        col_names = df.columns
-        remove_words = ["Year", "year", "date", "Date", "month", "Month"]
-        col_names = [word for word in col_names if word not in remove_words]
-    
-    option = st.sidebar.selectbox(
-        'Select the span',
-        ('1-Month', '3-Month'))
-    
-    
-    #search_string = st.sidebar.text_input("Enter the column name and press enter", "")
-    
-    search_string = st.sidebar.selectbox(
-        'Select the column',
-        (col_names))
-    
-    if search_string!= "":
-        if search_string in list(df.columns):
-            col = search_string
-            event_df = drought_events(df, col, option)
-            st.write("\n")
-            if option == "3-Month":
-                num = 3
-                st.subheader("3-Month period drought events")
-            else:
-                num = 1
-                st.subheader("1-Month period drought events")
+        col_names = ""
+        df = pd.DataFrame()
+        if uploaded_file:    
+            df = pd.read_excel(uploaded_file)
+            st.warning("Fields: " + ', '.join(list(df.columns)))
             
-            st.dataframe(event_df)
+            col_names = df.columns
+            remove_words = ["Year", "year", "date", "Date", "month", "Month"]
+            col_names = [word for word in col_names if word not in remove_words]
+        
+            option = st.sidebar.selectbox(
+                'Select the span',
+                ('1-Month', '3-Month'))
             
-            btn_download = st.button("Click to Download the Spreadsheet")
-            filename = col + "_"+str(num)+ "_month"+'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+            
+            #search_string = st.sidebar.text_input("Enter the column name and press enter", "")
+            
+            search_string = st.sidebar.selectbox(
+                'Select the column',
+                (col_names))
+            
+            if search_string!= "":
+                if search_string in list(df.columns):
+                    col = search_string
+                    event_df = drought_events(df, col, option)
+                    st.write("\n")
+                    if option == "3-Month":
+                        num = 3
+                        st.subheader("3-Month period drought events")
+                    else:
+                        num = 1
+                        st.subheader("1-Month period drought events")
+                    
+                    st.dataframe(event_df)
+                    
+                    btn_download = st.button("Click to Download the Spreadsheet")
+                    filename = col + "_"+str(num)+ "_month"+'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+        
+                    if btn_download:
+                        tmp_download_link = download_link(event_df, filename, 'Click here to download your data!')
+                        st.markdown(tmp_download_link, unsafe_allow_html=True)
+                    
+                    st.write("\n")
+                    
+                    tickbox = st.sidebar.checkbox("Show Distributions")
+                               
+                    if tickbox:
+                        option1 = st.sidebar.selectbox(
+                            'Select the drought parameter',
+                            ([word for word in event_df.columns if word not in ['event no.']]))
+                        
+                        filename1 = col + "_"+str(num)+ "_month"+ '_summary'+'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+                        f = Fitter(event_df[option1].values, bins=len(event_df),
+                                   distributions=['norm', 'genextreme', 'expon', 'weibull_max', 'weibull_min', 'gamma', 'lognorm', 'logistic'])
+                        f.fit()
+                        st.write("\n")
+                        st.subheader("Summary")
+                        st.write(f.summary(Nbest=8))
+                        download_link1 = download_link(f.summary(Nbest=8), filename1,'download your summary!')
+                        st.markdown(download_link1, unsafe_allow_html=True)
+                        plt.show()
+                        st.write("\n")
+                        st.subheader("Combined Distribution Plot")
+                        st.pyplot()
+                        
+                        option2 = st.selectbox(
+                            'Selection Criteria',
+                            ('aic', 'bic', 'sumsquare_error'))
+                        
+                        st.success("Best Fitted Distribution Parameters")
+                        st.write(f.get_best(method = option2))
+    
+    # """copula"""
+    if select_value == "Copula":
+    
+        st.header("🎲 Copula") 
+        uploaded_file1 = st.sidebar.file_uploader("Choose the drought parameters file", type="csv")
 
-            if btn_download:
-                tmp_download_link = download_link(event_df, filename, 'Click here to download your data!')
-                st.markdown(tmp_download_link, unsafe_allow_html=True)
-            
-            st.write("\n")
-            
-            tickbox = st.sidebar.checkbox("Show Distributions")
-                       
-            if tickbox:
-                option1 = st.sidebar.selectbox(
-                    'Select the drought parameter',
-                    ([word for word in event_df.columns if word not in ['event no.']]))
-                
-                # st.subheader("Normal Distribution")
-                # col1, col2 = st.columns([8,4])
-                
-                # with col1:
-                #     sns.distplot(np.array(event_df[option1]))
-                #     plt.show()
-                #     st.pyplot()
-                
-                # with col2:
-                #     pdf = normal_distribution(event_df[option1])
-                #     normal_df = pd.DataFrame(event_df[option1])
-                #     normal_df['normal'] = pdf
-                #     st.dataframe(normal_df)
-                
-                filename1 = col + "_"+str(num)+ "_month"+ '_summary'+'_{}.csv'.format(str(pd.datetime.now().strftime("%Y-%m-%d %H%M%S")))
-                f = Fitter(event_df[option1].values,
-                           distributions=['norm', 'genextreme', 'expon', 'weibull_max', 'weibull_min', 'gamma', 'lognorm', 'logistic'])
-                f.fit()
-                st.write("\n")
-                st.subheader("Summary")
-                st.write(f.summary(Nbest=8))
-                download_link1 = download_link(f.summary(Nbest=8), filename1,'download your summary!')
-                st.markdown(download_link1, unsafe_allow_html=True)
-                plt.show()
-                st.write("\n")
-                st.subheader("Combined Distribution Plot")
-                st.pyplot()
-                
-                option2 = st.selectbox(
-                    'Selection Criteria',
-                    ('aic', 'bic', 'sumsquare_error'))
-                
-                st.success("Best Fitted Distribution Parameters")
-                st.write(f.get_best(method = option2))
-                            
 if __name__ == "__main__":
     main()    
