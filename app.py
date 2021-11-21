@@ -22,6 +22,8 @@ import plotly.express as px
 
 import plotly.figure_factory as ff
 
+from copulas.univariate import Univariate
+
 
 #st.set_option('deprecation.showPyplotGlobalUse', False)
 
@@ -309,20 +311,31 @@ def main():
                         curve = i
                         break
                     
-                
+                    st.write(col + " field : Best fit was " + curve + " curve")
                     fit_values = f.fitted_pdf
                     fitted.append(fit_values[curve])
                 
-                #st.write(fitted)
                 fit_df = pd.DataFrame(np.vstack(fitted)).T
                 fit_df.columns = data1.columns
-                st.dataframe(fit_df)
                 
+                st.write("")
                 if len(multi_options1) == 1:
-                    option2 = st.selectbox(
-                        'Select the copula distribution',
-                        ('Beta', 'Gamma', 'Gaussian', 'Gaussian KDE', 'Log-Laplace', 'Student T', 'Truncated Gaussian', 'Uniform'))
-                        
+                    st.warning('Univariate Copulas: Beta, Gamma, Gaussian, Gaussian KDE, Log-Laplace, Student T, Truncated Gaussian, Uniform')
+                    univariate = Univariate()
+                    univariate.fit(fit_df)
+                    parameters = univariate.to_dict()
+                    st.success("Best fitted Copula :" + parameters['type'])
+                    
+                
+                elif len(multi_options1) == 2:
+                    st.warning('Bivariate Copulas: Clayton, Frank, Gumbel')
+                
+                elif len(multi_options1) == 3:
+                    st.warning('Multivariate Copulas: Gaussian Copula, D-Vine, C-Vine, R-Vine')
+                
+                else:
+                    st.error("Sorry Can't be processed")
+                    
                     
                     
 
