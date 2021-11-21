@@ -15,6 +15,8 @@ import seaborn as sns
 from scipy.stats import norm
 from fitter import Fitter, get_common_distributions, get_distributions
 from copulas.visualization import scatter_3d
+from copulalib.copulalib import Copula
+plt.style.use('ggplot')
             
 import plotly.graph_objects as go
 import numpy as np
@@ -23,11 +25,153 @@ import plotly.express as px
 import plotly.figure_factory as ff
 
 from copulas.univariate import Univariate
+from copulas.bivariate import Bivariate
+
 
 
 #st.set_option('deprecation.showPyplotGlobalUse', False)
 
 #%%
+class copulaClass(object):
+
+    # Available copulas
+    families = ['frank','clayton','gumbel']
+
+    def __init__(self,x,y):
+        # Information about the data
+        self.x = x
+        self.y = y
+        self.mu_x = np.array(x).mean()
+        self.mu_y = np.array(y).mean()
+        self.std_x = np.array(x).std()
+        self.std_y = np.array(y).std()
+
+        # Information about the copula
+        self.cop = 0
+        self.famil = 0
+        self.tau_ = 0
+        self.sr_ = 0
+        self.theta_ = 0
+
+    def showAvailableCopulas(self):
+        """This function plots available copulas
+           to give you a visual insight      """
+
+        # Random simulated data
+        x = np.random.normal(size=250)
+        y = 2.5*x + np.random.normal(size=250)
+        fig = plt.figure()
+
+        # Frank
+        frank = Copula(x,y,family='frank')
+        uf,vf = frank.generate_uv(1000)
+        fig.add_subplot(2,2,1)
+        plt.scatter(uf,vf,marker='.',color='blue')
+        plt.ylim(0,1)
+        plt.xlim(0,1)
+        plt.title('Frank copula')
+
+        # Clayton
+        clayton = Copula(x,y,family='clayton')
+        uc,vc = clayton.generate_uv(1000)
+        fig.add_subplot(2,2,2)
+        plt.scatter(uc,vc,marker='.',color='red')
+        plt.ylim(0,1)
+        plt.xlim(0,1)
+        plt.title('Clayton copula')
+
+        # Gumbel
+        gumbel = Copula(x,y,family='gumbel')
+        ug,vg = gumbel.generate_uv(1000)
+        fig.add_subplot(2,2,3)
+        plt.scatter(ug,vg,marker='.',color='green')
+        plt.ylim(0,1)
+        plt.xlim(0,1)
+        plt.title('Gumbel copula')
+
+        plt.show()
+        
+
+    def plotData(self):
+        """This function plots the data you've fed in
+           to give you a visual insight of the correlation
+           structure and the marginal distributions """
+        x = self.x
+        y = self.y
+        fig = plt.figure()
+        fig.add_subplot(2,2,1)
+        plt.hist(x,bins=20,color='green',alpha=0.8,align='mid')
+        plt.title('X variable distribution')
+        fig.add_subplot(2,2,3)
+        plt.scatter(x,y,marker="o",alpha=0.8)
+        fig.add_subplot(2,2,4)
+        plt.title('Joint X,Y')
+        plt.hist(y,bins=20,orientation='horizontal',color='red',alpha=0.8,align='mid')
+        plt.title('Y variable distribution')    
+        plt.show()
+
+    def generateCopula(self,fam,plot=False):
+        """Generate the copula and optionally plot it"""
+        
+        if fam.lower() not in self.families:
+            raise ValueError('Please select a valid family name')
+
+        # Copula generation
+        self.famil = fam.lower()
+        c = Copula(self.x,self.y,family=fam.lower())
+        self.cop = c
+
+        # Parameters are estimated and set
+        self.tau_ = c.tau
+        self.sr_ = c.sr
+        self.theta_ = c.theta
+
+        if plot:
+            u,v = c.generate_uv(1000)
+            plt.scatter(u,v,marker='.',color='red')
+            plt.xlim(0,1)
+            plt.ylim(0,1)
+            plt.title(fam.lower().capitalize()+' Copula 1000 pseudo observations')
+            plt.show()
+
+    def printCorrelation(self):
+        # Print details about correlations and parameters
+        print("#################################################")
+        print("Correlation details:")
+        print("Correlation index range: [-1,1] [negative,positive]")
+        print("Kendall's tau:",self.tau_)
+        print("Spearman's rho:",self.sr_)
+        print("Parameter of the copula (theta):",self.theta_)
+        print("#################################################")
+
+    def generatePseudoObs(self,n=1000,plot=False):
+        """This function generates and returns simulated pseudo observations """
+        
+        if self.famil == 0:
+            raise ValueError('Generate copula first')
+
+        u,v = self.cop.generate_uv(n)
+
+        if plot:
+            plt.scatter(u,v,marker='.',color='red')
+            plt.xlim(0,1)
+            plt.ylim(0,1)
+            plt.title(self.famil.capitalize()+' Copula 1000 pseudo observations')
+            plt.show()
+            
+        return u,v
+
+    def getSimulatedData(self,dist='normal',n=1000):
+        """This function simulates real observations assuming that your data
+           is normally distributed. Optionally you can edit this function and
+           choose the distribution that fits your data best"""
+
+        if dist.lower() == 'normal':
+            u,v = self.generatePseudoObs(n=n)
+            x = norm.ppf(u,loc=self.mu_x,scale=self.std_x)
+            y = norm.ppf(v,loc=self.mu_y,scale=self.std_y)
+            return x,y
+        
 def drought_events(df, col, option):
     data = df[col].to_frame()
 
@@ -169,6 +313,15 @@ def plot_1d(data):
     
     return st.write(fig)
 
+def copula_2d(x,y,copula_name):
+    a = copulaClass(x,y)
+    a.generateCopula(copula_name,plot=False)
+    c,d = a.getSimulatedData()
+    plt.scatter(c,d,color="red",label="Simulated data",marker='.')
+    plt.scatter(x,y,color="blue",label="Real data",marker='.')
+    plt.legend()
+    plt.title("Fitted "+ copula_name.capitalize() + " copula: simulated data versus real data")
+    st.pyplot(plt)
 
 def main():
     """Drought events and parameters"""
@@ -325,11 +478,35 @@ def main():
                     univariate.fit(fit_df)
                     parameters = univariate.to_dict()
                     st.success("Best fitted Copula :" + parameters['type'])
+                    st.write(parameters)
                     
                 
                 elif len(multi_options1) == 2:
                     st.warning('Bivariate Copulas: Clayton, Frank, Gumbel')
-                
+                    x = np.array(fit_df.iloc[:, 0])
+                    y = np.array(fit_df.iloc[:, 1])
+                    # a = copulaClass(x,y)
+                    # a.plotData()
+                    # st.pyplot(plt)
+                    
+                    option3 = st.selectbox(
+                        'Select the Copula distribution',
+                        ('frank', 'clayton', 'gumbel'))
+                    
+                    if option3:
+                        opt = option3
+                        xy = Copula(x,y,family=opt)
+                        try:
+                            copula_2d(x,y,opt)  
+                        except:
+                            st.error("Error creating the plot!")
+                        
+                        st.subheader("Copula Parameters")
+                        st.write("Correlation index range: [-1,1] [negative,positive]")
+                        st.write("Kendall's tau:" + str(xy.tau))
+                        st.write("Spearman's rho:" + str(xy.sr))
+                        st.write("Parameter of the copula (theta):" + str(xy.theta))
+       
                 elif len(multi_options1) == 3:
                     st.warning('Multivariate Copulas: Gaussian Copula, D-Vine, C-Vine, R-Vine')
                 
