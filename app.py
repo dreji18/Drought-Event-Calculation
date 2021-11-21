@@ -14,9 +14,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import norm
 from fitter import Fitter, get_common_distributions, get_distributions
+from copulas.visualization import scatter_3d
+            
+import plotly.graph_objects as go
+import numpy as np
+import plotly.express as px        
+
+import plotly.figure_factory as ff
 
 
-st.set_option('deprecation.showPyplotGlobalUse', False)
+#st.set_option('deprecation.showPyplotGlobalUse', False)
 
 #%%
 def drought_events(df, col, option):
@@ -127,6 +134,40 @@ def download_link(object_to_download, download_filename, download_link_text):
 
     return f'<a href="data:file/txt;base64,{b64}" download="{download_filename}">{download_link_text}</a>'
 
+def plot_3d(data):
+    x, y, z = data.iloc[:, 0].values, data.iloc[:, 1].values, data.iloc[:, 2].values
+    
+    fig = go.Figure(data=[go.Scatter3d(
+        x=x,
+        y=y,
+        z=z,
+        mode='markers',
+        marker=dict(
+            size=12,
+            color=z,                # set color to an array/list of desired values
+            colorscale='Viridis',   # choose a colorscale
+            opacity=0.8
+            )
+    )])
+    
+    # tight layout
+    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+    return st.write(fig)
+    
+def plot_2d(data):
+    data = data.abs()
+    fig = px.scatter(data, x=data.columns[0], y=data.columns[1], color=data.columns[0],
+                     size=data.columns[1])
+    
+    return st.write(fig)
+    
+def plot_1d(data):
+    colors = ['#4b0082']
+    fig = ff.create_distplot([data[c] for c in data.columns], data.columns, bin_size=.25, colors=colors)
+    
+    return st.write(fig)
+
+
 def main():
     """Drought events and parameters"""
     
@@ -200,10 +241,10 @@ def main():
                         st.write(f.summary(Nbest=8))
                         download_link1 = download_link(f.summary(Nbest=8), filename1,'download your summary!')
                         st.markdown(download_link1, unsafe_allow_html=True)
-                        plt.show()
+                        #plt.show()
                         st.write("\n")
                         st.subheader("Combined Distribution Plot")
-                        st.pyplot()
+                        st.pyplot(plt)
                         
                         option2 = st.selectbox(
                             'Selection Criteria',
@@ -217,6 +258,74 @@ def main():
     
         st.header("🎲 Copula") 
         uploaded_file1 = st.sidebar.file_uploader("Choose the drought parameters file", type="csv")
+        
+        if uploaded_file1:
+            df1 = pd.read_csv(uploaded_file1)
+            
+            st.subheader("Visualize the data using 3D plots")
+            
+            multi_options = st.multiselect(
+                'Select upto three drought parameter',
+                ['Severity', 'Peak', 'Duration', 'Inter-Arrival time'],
+                ['Duration', 'Severity'])
+            st.write("Note: Severity and Peak are in the order of negative magnitude")
+            
+            data = df1[multi_options]
+            
+            if len(multi_options) == 0:
+                st.write("")
+                
+            elif len(multi_options) == 3:
+                plot_3d(data)
+            
+            elif len(multi_options) == 2:
+                plot_2d(data)
+            
+            elif len(multi_options) == 1:
+                plot_1d(data)
+              
+            else:
+                st.error("Sorry Can't be processed")
+            
+            # calculating distributions and select best fit
+            st.subheader("Create Copula Instance")
+            multi_options1 = st.multiselect(
+                'Select upto three drought parameter',
+                ['Severity', 'Peak', 'Duration', 'Inter-Arrival time'])
+            
+            if multi_options1:
+                data1 = df1[multi_options1]
+                
+                fitted = []
+                for col in data1.columns:
+                    col_data = data1[col]
+                    
+                    f = Fitter(col_data,bins=len(col_data),
+                               distributions=['gamma','lognorm',"beta","burr","norm"])
+                    f.fit()
+                    
+                    curve = ""
+                    for i in f.get_best(method = 'aic').keys():
+                        curve = i
+                        break
+                    
+                
+                    fit_values = f.fitted_pdf
+                    fitted.append(fit_values[curve])
+                
+                #st.write(fitted)
+                fit_df = pd.DataFrame(np.vstack(fitted)).T
+                fit_df.columns = data1.columns
+                st.dataframe(fit_df)
+                
+                if len(multi_options1) == 1:
+                    option2 = st.selectbox(
+                        'Select the copula distribution',
+                        ('Beta', 'Gamma', 'Gaussian', 'Gaussian KDE', 'Log-Laplace', 'Student T', 'Truncated Gaussian', 'Uniform'))
+                        
+                    
+                    
 
+                
 if __name__ == "__main__":
     main()    
